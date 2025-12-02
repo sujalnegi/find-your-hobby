@@ -1,7 +1,5 @@
-/* --- Retro-Futurism / Synthwave Theme --- */
 
 :root {
-    /* Colors */
     --bg-dark: #050510;
     --glass-bg: rgba(20, 20, 35, 0.4);
     --glass-border: rgba(255, 255, 255, 0.1);
@@ -9,15 +7,12 @@
     --primary-cyan: #00ffff;
     --primary-purple: #bd00ff;
 
-    /* Text */
     --text-main: #ffffff;
     --text-muted: rgba(255, 255, 255, 0.7);
 
-    /* Shadows */
     --neon-shadow-pink: 0 0 10px rgba(255, 0, 255, 0.5), 0 0 20px rgba(255, 0, 255, 0.3);
     --neon-shadow-cyan: 0 0 10px rgba(0, 255, 255, 0.5), 0 0 20px rgba(0, 255, 255, 0.3);
 
-    /* Spacing */
     --radius-lg: 24px;
     --radius-md: 12px;
     --radius-sm: 8px;
@@ -35,17 +30,14 @@ body {
     font-family: 'Outfit', sans-serif;
     background-color: var(--bg-dark);
     color: var(--text-main);
-    min-height: 100vh;
+    min-height: 95vh;
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    /* Allow scrolling */
     padding: 2rem 1rem;
 }
-
-/* --- Background Effects --- */
 
 .background-wrapper {
     position: fixed;
@@ -88,7 +80,7 @@ body {
     position: absolute;
     border-radius: 50%;
     filter: blur(80px);
-    opacity: 0.6;
+    opacity: 0.65;
 }
 
 .orb-1 {
@@ -135,8 +127,6 @@ body {
     pointer-events: none;
 }
 
-/* --- Layout Components --- */
-
 .app-container {
     width: 100%;
     max-width: 900px;
@@ -146,7 +136,6 @@ body {
     gap: 3rem;
 }
 
-/* Header */
 header {
     text-align: center;
     margin-top: 2rem;
@@ -202,7 +191,6 @@ header {
     letter-spacing: 1px;
 }
 
-/* Glass Panel */
 .glass-panel {
     background: var(--glass-bg);
     backdrop-filter: blur(20px);
@@ -226,7 +214,6 @@ header {
     opacity: 0.5;
 }
 
-/* Form Grid */
 .form-grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -243,7 +230,6 @@ header {
     }
 }
 
-/* Inputs */
 .form-group label {
     display: block;
     font-size: 0.9rem;
@@ -279,7 +265,6 @@ input::placeholder {
     color: rgba(255, 255, 255, 0.3);
 }
 
-/* Buttons */
 .btn-group {
     display: flex;
     gap: 1rem;
@@ -326,7 +311,6 @@ input::placeholder {
     box-shadow: 0 0 30px rgba(0, 255, 255, 0.6);
 }
 
-/* Results Section */
 .results-grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -475,7 +459,7 @@ input::placeholder {
 }
 
 .score-bar-bg {
-    height: 8px;
+    height: 7px;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 99px;
     margin-top: 0.5rem;
@@ -489,7 +473,6 @@ input::placeholder {
     box-shadow: 0 0 10px var(--primary-pink);
 }
 
-/* Animations */
 @keyframes fadeIn {
     from {
         opacity: 0;

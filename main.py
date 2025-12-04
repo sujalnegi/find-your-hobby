@@ -1,18 +1,18 @@
 import json
 import logging
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 import numpy as np
 from flask import Flask, render_template
 from flask_cors import CORS
 from pydantic import BaseModel
+from scipy.spatial.distance import cdist
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[
     logging.FileHandler("server.log"),
     logging.StreamHandler()
 ])
 logger = logging.getLogger(__name__)
-
 
 BASE_DIR = Path(__file__).resolve().parent
 HOBBIES_PATH = BASE_DIR / "hobbies.json"
@@ -22,7 +22,6 @@ MODEL_NAME = "all-MiniLM-L6-v2"
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
-
 
 class Answers(BaseModel):
     interest: Optional[str] = ""
@@ -123,6 +122,85 @@ def safe_float(x: Any, default: float = 0.0) -> float:
         return float(x)
     except (ValueError, TypeError):
         return default
+
+def score_and_reasons(h: Dict[str, Any], a: Answers) -> Tuple[float, List[str]]:
+    s = 0.0
+    reasons: List[str] = []
+    
+    try:
+        interests = [str(x).lower() for x in h.get("interests", [])]
+        if a.interest and a.interest.strip().lower() in interests:
+            s += 3.0
+            reasons.append("Matches your interest")
+    except Exception:
+        pass
+
+    pref = safe_float(h.get("pref_indoor", 0))
+    if a.environment == "indoor" and pref > 0:
+        s += 1.0 * pref
+        reasons.append("Good for indoor preference")
+    elif a.environment == "outdoor" and pref < 0:
+        s += 1.0 * abs(pref)
+        reasons.append("Good for outdoor preference")
+
+    if a.creative == "yes" and safe_float(h.get("creative", 0)) > 0:
+        s += 1.0
+        reasons.append("Suits creative preference")
+
+    social_val = safe_float(h.get("social", 0))
+    if a.social == "solo" and social_val >= 0:
+        s += 0.5
+        reasons.append("Solo-friendly")
+    elif a.social == "group" and social_val <= 0:
+        s += 0.5
+        reasons.append("Group-friendly")
+
+    cost = max(safe_float(h.get("cost_level", 1)), 1.0)
+    if a.budget == "low":
+        s += 1.0 / cost
+        reasons.append("Fits low budget")
+
+    time_need = safe_float(h.get("time_hours", h.get("time_per_week_hours", 0)))
+    if a.time == "low":
+        if time_need <= 3:
+            s += 1.0
+            reasons.append("Low weekly time needed")
+    elif a.time == "high":
+        time_commit = safe_float(h.get("time_commit", h.get("time_hours", 0)))
+        s += time_commit * 0.2
+
+    return float(s), reasons
+
+def format_data(h: Dict[str, Any], score: float, reasons: List[str]) -> Dict[str, Any]:
+    cost_label = h.get("cost_label") or h.get("cost_level_label") or "Unknown"
+    difficulty_label = h.get("difficulty") or h.get("difficulty_label") or "Unknown"
+    
+    return {
+        "name": h.get("name", "Unknown Hobby"),
+        "short": h.get("short", ""),
+        "cost_level": cost_label,
+        "difficulty": difficulty_label,
+        "time_per_week_hours": h.get("time_hours", h.get("time_per_week_hours", 0)),
+        "how_to_start": h.get("how_to_start", []),
+        "why_fit": reasons,
+        "match_score": round(score, 2)
+    }
+
+def topk_by_embedding(user_text: str, k: int = 10) -> Tuple[List[int], List[float]]:
+    if state.hobby_embeddings is None or state.model is None:
+        n = min(k, len(state.hobbies))
+        return list(range(n)), [0.0] * n
+    
+    try:
+        ue = state.model.encode([user_text], convert_to_numpy=True)
+        dists = cdist(ue, state.hobby_embeddings, metric="cosine")[0]
+        sims = 1.0 - dists
+        idx = np.argsort(dists)[:k]
+        return idx.tolist(), sims[idx].tolist()
+    except Exception as e:
+        logger.error(f"Error in embedding search: {e}")
+        n = min(k, len(state.hobbies))
+        return list(range(n)), [0.0] * n
 
 @app.route("/")
 def index():

@@ -2,11 +2,13 @@ import json
 import logging
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
+
 import numpy as np
-from flask import Flask, render_template
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from scipy.spatial.distance import cdist
+from werkzeug.exceptions import BadRequest
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[
     logging.FileHandler("server.log"),
@@ -14,8 +16,15 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 ])
 logger = logging.getLogger(__name__)
 
+with open("debug.txt", "w") as f:
+    f.write("Server script started\n")
+
 BASE_DIR = Path(__file__).resolve().parent
 HOBBIES_PATH = BASE_DIR / "hobbies.json"
+with open("debug.txt", "a") as f:
+    f.write(f"BASE_DIR: {BASE_DIR}\n")
+    f.write(f"HOBBIES_PATH: {HOBBIES_PATH}\n")
+    f.write(f"Exists: {HOBBIES_PATH.exists()}\n")
 EMB_PATH = BASE_DIR / "hobby_emb.npy"
 DOCS_PATH = BASE_DIR / "hobby_docs.json"
 MODEL_NAME = "all-MiniLM-L6-v2"
@@ -54,7 +63,7 @@ class AppState:
                 for item in raw:
                     if isinstance(item, dict):
                         self.hobbies.append(item)
-                    elif isinstance(item, list):
+                    elif isinstance(item, list): 
                         for sub in item:
                             if isinstance(sub, dict):
                                 self.hobbies.append(sub)
@@ -133,8 +142,7 @@ def score_and_reasons(h: Dict[str, Any], a: Answers) -> Tuple[float, List[str]]:
             s += 3.0
             reasons.append("Matches your interest")
     except Exception:
-        pass
-
+        pass 
     pref = safe_float(h.get("pref_indoor", 0))
     if a.environment == "indoor" and pref > 0:
         s += 1.0 * pref
@@ -205,6 +213,67 @@ def topk_by_embedding(user_text: str, k: int = 10) -> Tuple[List[int], List[floa
 @app.route("/")
 def index():
     return render_template("index.html")
+
+@app.route("/hobbies", methods=["GET"])
+def all_hobbies():
+    try:
+        results = []
+        for h in state.hobbies:
+            s, reasons = score_and_reasons(h, Answers())
+            results.append(format_data(h, s, reasons))
+        return jsonify(results)
+    except Exception as e:
+        logger.error(f"Error in /hobbies: {e}")
+        return jsonify({"error": "Failed to prepare hobbies", "detail": str(e)}), 500
+
+@app.route("/suggest", methods=["POST"])
+def suggest():
+    with open("debug.txt", "a") as f:
+        f.write("Entered /suggest\n")
+    try:
+        try:
+            payload = request.get_json(force=True)
+        except BadRequest:
+            return jsonify({"error": "Invalid JSON"}), 400
+
+        if payload is None:
+             return jsonify({"error": "Empty payload"}), 400
+             
+        try:
+            a = Answers.model_validate(payload)
+        except ValidationError as ve:
+            return jsonify({"error": "Invalid payload", "detail": ve.errors()}), 400
+
+        user_text = f"{a.interest} | env:{a.environment} | creative:{a.creative} | social:{a.social} | budget:{a.budget} | time:{a.time}"
+        
+        idxs, sims = topk_by_embedding(user_text, k=10)
+        
+        candidates: List[Tuple[float, Dict[str, Any], List[str]]] = []
+        
+        for i, sim in zip(idxs, sims):
+            if i >= len(state.hobbies): continue
+            
+            h = state.hobbies[int(i)]
+            embed_score = float(sim)
+            
+            rule_score, reasons = score_and_reasons(h, a)
+            rule_norm = rule_score / (rule_score + 1.0) 
+            
+            final = 0.6 * embed_score + 0.4 * rule_norm
+            
+            merged_reasons = reasons.copy()
+            merged_reasons.append(f"embed_sim={round(embed_score, 2)}")
+            
+            candidates.append((final, h, merged_reasons))
+        
+        candidates.sort(key=lambda x: x[0], reverse=True)
+        
+        top = [format_data(h, float(score) * 10.0, reasons) for score, h, reasons in candidates[:3]]
+        return jsonify(top)
+
+    except Exception as e:
+        logger.error(f"Error in /suggest: {e}")
+        return jsonify({"error": "Suggestion error", "detail": str(e)}), 500
 
 state.load_hobbies()
 state.load_or_build_embeddings()

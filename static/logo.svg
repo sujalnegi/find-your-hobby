@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100">
+  <style>
+    .pixel-text {
+      font-family: 'Courier New', Courier, monospace;
+      font-weight: bold;
+      font-size: 40px;
+      fill: #4f46e5;
+      text-transform: uppercase;
+      letter-spacing: -2px;
+    }
+  </style>
+  
+  <!-- Pixel Art Icon (Magnifying Glass) -->
+  <g transform="translate(20, 25) scale(4)">
+    <rect x="2" y="1" width="5" height="1" fill="#4f46e5"/>
+    <rect x="1" y="2" width="1" height="5" fill="#4f46e5"/>
+    <rect x="7" y="2" width="1" height="5" fill="#4f46e5"/>
+    <rect x="2" y="7" width="5" height="1" fill="#4f46e5"/>
+    <rect x="8" y="8" width="1" height="1" fill="#4f46e5"/>
+    <rect x="9" y="9" width="1" height="1" fill="#4f46e5"/>
+    <rect x="10" y="10" width="1" height="1" fill="#4f46e5"/>
+  </g>
+
+  <text x="55%" y="55%" class="pixel-text" dominant-baseline="middle" text-anchor="middle">
+    FIND YOUR HOBBY
+  </text>
+</svg>
